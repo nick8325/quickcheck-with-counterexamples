@@ -162,16 +162,16 @@ quickCheckResult = quickCheckWithResult stdArgs
 quickCheckWithResult :: Testable prop => Args -> prop -> IO (Maybe (Counterexample prop), Result)
 quickCheckWithResult args prop = do
   ref <- newIORef Nothing
+  let
+    -- Because the Testable instances for Bool and Property use whenFail,
+    -- this function should only be called once, at the end of shrinking.
+    modify x Nothing = Just x
+    modify _ (Just _) =
+      error "Internal error in quickcheck-with-counterexamples: IORef written to twice"
   res <- QC.quickCheckWithResult args $ ioProperty $ do
-    -- Write Nothing every test so we don't get the value from
-    -- e.g. a previous shrinking step
-    writeIORef ref Nothing
-    return $ unProperty (property prop) (writeIORef ref . Just)
-  case res of
-    Failure{} -> do
-      cex <- readIORef ref
-      return (cex, res)
-    _ -> return (Nothing, res)
+    return $ unProperty (property prop) (modifyIORef ref . modify)
+  cex <- readIORef ref
+  return (cex, res)
 
 -- | See 'Test.QuickCheck.verboseCheck' in "Test.QuickCheck".
 verboseCheck :: Testable prop => prop -> IO (Maybe (Counterexample prop))

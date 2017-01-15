@@ -37,15 +37,26 @@ Haskell value:
 [0]
 [1]
 [1,0] /= [0,1]
+
 >>> :t xs
 xs :: [Int]
+
 >>> xs
 [0]
+
 >>> ys
 [1]
 
+Here is how this module's API differs from normal QuickCheck, in more detail:
 
-
+* The 'Testable' class now has an associated type 'Counterexample'
+  which describes the counterexample. 'Property' is now a synonym for
+  @'PropertyOf' ()@, where @'PropertyOf' cex@ represents a property
+  with an associated counterexample @cex@.
+  The QuickCheck property combinators preserve the counterexample,
+  by returning 'PropertyOf' instead of 'Property'.
+* 'quickCheck' and related functions return a @'Counterexample' prop@.
+* Finally, there are a couple of new combinators, documented below.
 -}
 
 {-# LANGUAGE TypeOperators, TypeFamilies, DeriveFunctor, TemplateHaskell #-}
@@ -93,8 +104,15 @@ import Language.Haskell.TH
 --
 -- Note that there is a 'Functor' instance, which is useful when you
 -- want to manipulate the counterexample, e.g., to change its type.
+-- For example, when some branches of your property produce a
+-- counterexample and other branches do not, the types will not match
+-- up, but using 'fmap' you can make the counterexample be a 'Maybe'.
 
-newtype PropertyOf cex = MkProperty { unProperty :: (cex -> IO ()) -> QC.Property }
+newtype PropertyOf cex =
+  MkProperty {
+    -- | Implementation note: the property receives a callback
+    -- to which it should pass the counterexample after shrinking.
+    unProperty :: (cex -> IO ()) -> QC.Property }
   deriving Functor
 
 -- | A property which doesn't produce a counterexample.
@@ -143,6 +161,8 @@ instance (Show a, QC.Arbitrary a, Testable b) => Testable (a -> b) where
   type Counterexample (a -> b) = a :&: Counterexample b
   property prop = forAllShrink arbitrary shrink prop
 
+-- * New functionality which is not in QuickCheck
+
 -- | A type of pairs. Used in counterexamples.
 infixr 6 :&:
 data a :&: b = a :&: b deriving (Eq, Ord, Show, Read)
@@ -176,7 +196,7 @@ quickCheckWithResult args prop = do
   ref <- newIORef Nothing
   let
     -- Because the Testable instances for Bool and Property use whenFail,
-    -- this function should only be called once, at the end of shrinking.
+    -- this function will only be called once, at the end of shrinking.
     modify x Nothing = Just x
     modify _ (Just _) =
       error "Internal error in quickcheck-with-counterexamples: IORef written to twice"

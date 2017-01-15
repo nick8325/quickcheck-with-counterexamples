@@ -32,9 +32,12 @@ Haskell value:
 [0]
 [1]
 [1,0] /= [0,1]
+
 > :t xs
 xs :: [Int]
+
 > xs
 [0]
+
 > ys
 [1]

@@ -1,6 +1,6 @@
 When QuickCheck finds a counterexample, it prints it out but
-doesn't return it to the Haskell program. This can be annoying
-when debugging.
+doesn't save it so that the programmer can access it. This can be
+annoying when debugging.
 
 This library provides a small extension to QuickCheck that returns
 counterexamples as normal Haskell values. To use it, just import
@@ -16,7 +16,8 @@ prop_reverse_append :: [Int] -> [Int] -> Property
 prop_reverse_append xs ys =
   reverse (xs++ys) === reverse xs ++ reverse ys
 
-If we run QuickCheck on this property, it will return a counterexample:
+If we look at the type of quickCheck, we see that it will return a
+counterexample:
 
 > :t quickCheck prop_reverse_append
 quickCheck prop_reverse_append :: IO (Maybe ([Int] :&: [Int] :&: ()))
@@ -24,7 +25,7 @@ quickCheck prop_reverse_append :: IO (Maybe ([Int] :&: [Int] :&: ()))
 The Maybe is there because we get Nothing if the property succeeds;
 ":&:" is a datatype of pairs.
 
-Finally, if we run QuickCheck, we get the counterexample as a normal
+If we run QuickCheck, we can get the counterexample as a normal
 Haskell value:
 
 > Just (xs :&: ys :&: ()) <- quickCheck prop_reverse_append

@@ -29,7 +29,7 @@ quickCheck prop_reverse_append :: IO (Maybe ([Int] :&: [Int] :&: ()))
 The 'Maybe' is there because 'quickCheck' will return 'Nothing' if the
 property succeeds; ':&:' is a datatype of pairs.
 
-Finally, if we run QuickCheck, we get the counterexample as a normal
+If we run QuickCheck, we can get the counterexample as a normal
 Haskell value:
 
 >>> Just (xs :&: ys :&: ()) <- quickCheck prop_reverse_append

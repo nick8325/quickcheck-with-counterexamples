@@ -4,16 +4,15 @@ synopsis: Get counterexamples from QuickCheck as Haskell values
 
 description:
     When QuickCheck finds a counterexample, it prints it out but
-    doesn't return it to the Haskell program. This can be annoying
-    when debugging.
+    doesn't save it so that the programmer can access it. This can be
+    annoying when debugging.
     .
     This library provides a small extension to QuickCheck that returns
     counterexamples as normal Haskell values. To use it, just import
     "Test.QuickCheck.Counterexamples" /instead of/ @Test.QuickCheck@.
-    You will notice that the return types of
-    'Test.QuickCheck.Counterexamples.quickCheck' and related functions
-    have changed to include a counterexample, but otherwise the module
-    is compatible with normal QuickCheck.
+    The library is largely compatible with normal QuickCheck, but the
+    return types of 'Test.QuickCheck.Counterexamples.quickCheck' and
+    related functions are changed to include a counterexample.
 
 homepage:      http://www.github.com/nick8325/quickcheck-with-counterexamples
 license:       BSD3

@@ -32,9 +32,9 @@ Haskell value:
 [0]
 [1]
 [1,0] /= [0,1]
->>> :t xs
+> :t xs
 xs :: [Int]
->>> xs
+> xs
 [0]
->>> ys
+> ys
 [1]

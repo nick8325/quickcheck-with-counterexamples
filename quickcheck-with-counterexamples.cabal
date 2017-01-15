@@ -13,6 +13,9 @@ description:
     The library is largely compatible with normal QuickCheck, but the
     return types of 'Test.QuickCheck.Counterexamples.quickCheck' and
     related functions are changed to include a counterexample.
+    .
+    For usage information, see the "Test.QuickCheck.Counterexamples"
+    module.
 
 homepage:      http://www.github.com/nick8325/quickcheck-with-counterexamples
 license:       BSD3

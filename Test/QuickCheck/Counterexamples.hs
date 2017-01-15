@@ -82,8 +82,6 @@ import Test.QuickCheck hiding
   , collect
   , classify
   , cover
-  , Discard(..)
-  , discard
   , mapSize
   )
 import qualified Test.QuickCheck as QC
@@ -112,6 +110,10 @@ class QC.Testable prop => Testable prop where
   -- | Convert the property to a 'PropertyOf'.
   property :: prop -> PropertyFrom prop
 
+instance Testable Discard where
+  type Counterexample Discard = ()
+  property prop = MkProperty (\_ -> QC.property prop)
+
 instance Testable Bool where
   type Counterexample Bool = ()
   property prop = MkProperty (\f -> QC.whenFail (f ()) prop)
@@ -119,6 +121,16 @@ instance Testable Bool where
 instance Testable QC.Property where
   type Counterexample QC.Property = ()
   property prop = MkProperty (\f -> QC.whenFail (f ()) prop)
+
+instance Testable prop => Testable (Gen prop) where
+  type Counterexample (Gen prop) = Counterexample prop
+  property prop = MkProperty $ \k ->
+    -- prop :: Gen prop
+    -- unProperty . property <$> prop ::
+    --   Gen ((cex -> IO ()) -> Property)
+    -- unProperty . property <$> prop <*> pure k ::
+    --   Gen Property
+    QC.property (unProperty . property <$> prop <*> pure k)
 
 instance QC.Testable (PropertyOf cex) where
   property prop = unProperty prop (\_ -> return ())

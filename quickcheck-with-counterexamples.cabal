@@ -24,7 +24,15 @@ category:      Testing
 build-type:    Simple
 cabal-version: >=1.10
 
-extra-source-files: README
+extra-source-files:
+    README
+    examples/Heap.hs
+    examples/Heap_Program.hs
+    examples/Heap_ProgramAlgebraic.hs
+    examples/Lambda.hs
+    examples/Merge.hs
+    examples/Set.hs
+    examples/Simple.hs
 
 source-repository head
   type:     git

@@ -66,15 +66,23 @@ import Data.IORef
 import Test.QuickCheck hiding
   ( quickCheck, quickCheckWith, quickCheckResult, quickCheckWithResult
   , verboseCheck, verboseCheckWith, verboseCheckResult, verboseCheckWithResult
+  , labelledExamples, labelledExamplesWith, labelledExamplesResult, labelledExamplesWithResult
   , polyQuickCheck, polyVerboseCheck
   , Property, Testable(..)
   , forAll
   , forAllShrink
+  , forAllShow
+  , forAllShrinkShow
+  , forAllBlind
+  , forAllShrinkBlind
   , shrinking
   , (==>)
   , (===)
+  , (=/=)
   , ioProperty
+  , idempotentIOProperty
   , verbose
+  , verboseShrinking
   , once
   , again
   , within
@@ -93,6 +101,10 @@ import Test.QuickCheck hiding
   , collect
   , classify
   , cover
+  , tabulate
+  , coverTable
+  , checkCoverage
+  , checkCoverageWith
   , mapSize
   )
 import qualified Test.QuickCheck as QC
@@ -221,6 +233,22 @@ verboseCheckResult p = quickCheckResult (verbose p)
 verboseCheckWithResult :: Testable prop => Args -> prop -> IO (Maybe (Counterexample prop), Result)
 verboseCheckWithResult a p = quickCheckWithResult a (verbose p)
 
+-- | See 'Test.QuickCheck.labelledExamples' in "Test.QuickCheck".
+labelledExamples :: Testable prop => prop -> IO (Maybe (Counterexample prop))
+labelledExamples p = quickCheck (verbose p)
+
+-- | See 'Test.QuickCheck.labelledExamplesWith' in "Test.QuickCheck".
+labelledExamplesWith :: Testable prop => Args -> prop -> IO (Maybe (Counterexample prop))
+labelledExamplesWith args p = quickCheckWith args (verbose p)
+
+-- | See 'Test.QuickCheck.labelledExamplesResult' in "Test.QuickCheck".
+labelledExamplesResult :: Testable prop => prop -> IO (Maybe (Counterexample prop), Result)
+labelledExamplesResult p = quickCheckResult (verbose p)
+
+-- | See 'Test.QuickCheck.labelledExamplesWithResult' in "Test.QuickCheck".
+labelledExamplesWithResult :: Testable prop => Args -> prop -> IO (Maybe (Counterexample prop), Result)
+labelledExamplesWithResult a p = quickCheckWithResult a (verbose p)
+
 -- | See 'Test.QuickCheck.polyQuickCheck' in "Test.QuickCheck".
 polyQuickCheck :: Name -> ExpQ
 polyQuickCheck x = [| quickCheck $(monomorphic x) |]
@@ -236,8 +264,26 @@ forAll arb prop = forAllShrink arb shrinkNothing prop
 -- | See 'Test.QuickCheck.forAllShrink' in "Test.QuickCheck".
 forAllShrink :: (Testable prop, Show a) => Gen a -> (a -> [a]) -> (a -> prop) -> PropertyOf (a :&: Counterexample prop)
 forAllShrink arb shr prop =
+  forAllShrinkShow arb shr show prop
+
+-- | See 'Test.QuickCheck.forAllShow' in "Test.QuickCheck".
+forAllShow :: Testable prop => Gen a -> (a -> String) -> (a -> prop) -> PropertyOf (a :&: Counterexample prop)
+forAllShow arb shw prop = forAllShrinkShow arb shrinkNothing shw prop
+
+-- | See 'Test.QuickCheck.forAllShrinkShow' in "Test.QuickCheck".
+forAllShrinkShow :: Testable prop => Gen a -> (a -> [a]) -> (a -> String) -> (a -> prop) -> PropertyOf (a :&: Counterexample prop)
+forAllShrinkShow arb shr shw prop =
+  forAllShrinkBlind arb shr (\x -> counterexample (shw x) (prop x))
+
+-- | See 'Test.QuickCheck.forAllBlind' in "Test.QuickCheck".
+forAllBlind :: Testable prop => Gen a -> (a -> prop) -> PropertyOf (a :&: Counterexample prop)
+forAllBlind arb prop = forAllShrinkBlind arb shrinkNothing prop
+
+-- | See 'Test.QuickCheck.forAllShrinkBlind' in "Test.QuickCheck".
+forAllShrinkBlind :: Testable prop => Gen a -> (a -> [a]) -> (a -> prop) -> PropertyOf (a :&: Counterexample prop)
+forAllShrinkBlind arb shr prop =
   MkProperty $ \f ->
-    QC.forAllShrink arb shr $ \x ->
+    QC.forAllShrinkBlind arb shr $ \x ->
       unProperty (property (prop x)) (\y -> f (x :&: y))
 
 -- | See 'Test.QuickCheck.shrinking' in "Test.QuickCheck".
@@ -256,6 +302,11 @@ infix 4 ===
 (===) :: (Eq a, Show a) => a -> a -> Property
 x === y = property (x QC.=== y)
 
+-- | See 'Test.QuickCheck.=/=' in "Test.QuickCheck".
+infix 4 =/=
+(=/=) :: (Eq a, Show a) => a -> a -> Property
+x =/= y = property (x QC.=/= y)
+
 -- | See 'Test.QuickCheck.ioProperty' in "Test.QuickCheck".
 ioProperty :: Testable prop => IO prop -> PropertyFrom prop
 ioProperty ioprop =
@@ -263,9 +314,20 @@ ioProperty ioprop =
     prop <- ioprop
     return (unProperty (property prop) k)
 
+-- | See 'Test.QuickCheck.idempotentIOProperty' in "Test.QuickCheck".
+idempotentIOProperty :: Testable prop => IO prop -> PropertyFrom prop
+idempotentIOProperty ioprop =
+  MkProperty $ \k -> QC.idempotentIOProperty $ do
+    prop <- ioprop
+    return (unProperty (property prop) k)
+
 -- | See 'Test.QuickCheck.verbose' in "Test.QuickCheck".
 verbose :: Testable prop => prop -> PropertyFrom prop
 verbose = onProperty QC.verbose
+
+-- | See 'Test.QuickCheck.verboseShrinking' in "Test.QuickCheck".
+verboseShrinking :: Testable prop => prop -> PropertyFrom prop
+verboseShrinking = onProperty QC.verboseShrinking
 
 -- | See 'Test.QuickCheck.once' in "Test.QuickCheck".
 once :: Testable prop => prop -> PropertyFrom prop
@@ -312,8 +374,24 @@ classify :: Testable prop => Bool -> String -> prop -> PropertyFrom prop
 classify cond lab = onProperty (QC.classify cond lab)
 
 -- | See 'Test.QuickCheck.cover' in "Test.QuickCheck".
-cover :: Testable prop => Bool -> Int -> String -> prop -> PropertyFrom prop
-cover cond percent lab = onProperty (QC.cover cond percent lab)
+cover :: Testable prop => Double -> Bool -> String -> prop -> PropertyFrom prop
+cover percent cond lab = onProperty (QC.cover percent cond lab)
+
+-- | See 'Test.QuickCheck.tabulate' in "Test.QuickCheck".
+tabulate :: Testable prop => String -> [String] -> prop -> PropertyFrom prop
+tabulate table values = onProperty (QC.tabulate table values)
+
+-- | See 'Test.QuickCheck.coverTables' in "Test.QuickCheck".
+coverTables :: Testable prop => String -> [(String, Double)] -> prop -> PropertyFrom prop
+coverTables table percents = onProperty (QC.coverTable table percents)
+
+-- | See 'Test.QuickCheck.checkCoverage' in "Test.QuickCheck".
+checkCoverage :: Testable prop => prop -> PropertyFrom prop
+checkCoverage = onProperty QC.checkCoverage
+
+-- | See 'Test.QuickCheck.checkCoverageWith' in "Test.QuickCheck".
+checkCoverageWith :: Testable prop => Confidence -> prop -> PropertyFrom prop
+checkCoverageWith confidence = onProperty (QC.checkCoverageWith confidence)
 
 -- | See 'Test.QuickCheck.mapSize' in "Test.QuickCheck".
 mapSize :: Testable prop => (Int -> Int) -> prop -> PropertyFrom prop

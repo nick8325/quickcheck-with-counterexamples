@@ -49,14 +49,14 @@ xs :: [Int]
 
 Here is how this module's API differs from normal QuickCheck, in more detail:
 
-* The 'Testable' class now has an associated type 'Counterexample'
-  which describes the counterexample. 'Property' is now a synonym for
-  @'PropertyOf' ()@, where @'PropertyOf' cex@ represents a property
-  with an associated counterexample @cex@.
-  The QuickCheck property combinators preserve the counterexample,
-  by returning 'PropertyOf' instead of 'Property'.
+* There is a new type @'PropertyOf' cex@, which represents a property that
+  (if it fails) generates a counterexample of type @cex@. 'Property' is now
+  a synonym for @'PropertyOf' ()@. The 'Testable' class now has an associated
+  type 'Counterexample' which describes the counterexample.
+* The QuickCheck property combinators take and return 'PropertyOf' instead of
+  'Property' wherever possible, in order to preserve the counterexample.
 * 'quickCheck' and related functions return a @'Counterexample' prop@.
-* Finally, there are a couple of new combinators, documented below.
+* There are two new combinators 'typedCounterexample' and 'onProperty'.
 -}
 
 {-# LANGUAGE TypeOperators, TypeFamilies, DeriveFunctor, TemplateHaskell #-}

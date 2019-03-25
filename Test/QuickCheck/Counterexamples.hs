@@ -144,6 +144,18 @@ instance Testable Discard where
   type Counterexample Discard = ()
   property prop = MkProperty (\_ -> QC.property prop)
 
+instance Testable () where
+  type Counterexample () = ()
+  property prop = MkProperty (\f -> QC.whenFail (f ()) prop)
+
+instance Testable prop => Testable (Maybe prop) where
+  type Counterexample (Maybe prop) = Counterexample prop
+  property = property . liftMaybe
+    where
+      -- See comment for liftUnit above
+      liftMaybe prop@Nothing = MkProperty (\_ -> QC.property prop)
+      liftMaybe (Just prop) = property prop
+
 instance Testable Bool where
   type Counterexample Bool = ()
   property prop = MkProperty (\f -> QC.whenFail (f ()) prop)

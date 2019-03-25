@@ -109,6 +109,7 @@ import Test.QuickCheck hiding
   )
 import qualified Test.QuickCheck as QC
 import Language.Haskell.TH
+import Control.Monad
 
 -- * The 'PropertyOf' type and 'Testable' typeclass
 
@@ -139,6 +140,11 @@ class QC.Testable prop => Testable prop where
   type Counterexample prop
   -- | Convert the property to a 'PropertyOf'.
   property :: prop -> PropertyFrom prop
+
+  -- | See 'Test.QuickCheck.propertyForAllShrinkShow'.
+  propertyForAllShrinkShow :: Show a => Gen a -> (a -> [a]) -> (a -> String) -> (a -> prop) -> PropertyOf (a :&: Counterexample prop)
+  propertyForAllShrinkShow gen shr f =
+    forAllShrinkShow gen shr f
 
 instance Testable Discard where
   type Counterexample Discard = ()
@@ -183,7 +189,18 @@ instance Testable (PropertyOf cex) where
 
 instance (Show a, QC.Arbitrary a, Testable b) => Testable (a -> b) where
   type Counterexample (a -> b) = a :&: Counterexample b
-  property prop = forAllShrink arbitrary shrink prop
+  property prop = propertyForAllShrinkShow arbitrary shrink show prop
+
+  -- Copied from QuickCheck
+  propertyForAllShrinkShow gen shr shw f =
+    -- gen :: Gen b, shr :: b -> [b], f :: b -> a -> prop
+    -- Idea: Generate and shrink (b, a) as a pair
+    fmap (\((x, y) :&: z) -> x :&: y :&: z) $
+    propertyForAllShrinkShow
+      (liftM2 (,) gen arbitrary)
+      (liftShrink2 shr shrink)
+      (\(x, y) -> shw x ++ "\n" ++ show y)
+      (uncurry f)
 
 -- * New functionality which is not in QuickCheck
 

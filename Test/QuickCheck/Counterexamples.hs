@@ -47,7 +47,13 @@ xs :: [Int]
 >>> ys
 [1]
 
-Here is how this module's API differs from normal QuickCheck, in more detail:
+If you use 'counterexample' in your property, the string you pass
+won't be returned as a Haskell value. You might instead want to use
+'typedCounterexample', which adds a Haskell value to the counterexample
+(but doesn't print it).
+
+That ought to be all you need to know to use this module. If you want all
+the details, here is how this module alters QuickCheck's API:
 
 * There is a new type @'PropertyOf' cex@, which represents a property that
   (if it fails) generates a counterexample of type @cex@. 'Property' is now
@@ -209,6 +215,8 @@ infixr 6 :&:
 data a :&: b = a :&: b deriving (Eq, Ord, Show, Read)
 
 -- | Add a value to the counterexample.
+-- The value is not printed as part of the counterexample;
+-- if you want it to be, use 'counterexample' as well.
 typedCounterexample :: Testable prop => a -> prop -> PropertyOf (a :&: Counterexample prop)
 typedCounterexample x prop = fmap (x :&:) (property prop)
 

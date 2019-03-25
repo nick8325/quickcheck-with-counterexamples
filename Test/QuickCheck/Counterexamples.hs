@@ -241,8 +241,8 @@ quickCheckWithResult args prop = do
     modify x Nothing = Just x
     modify _ (Just _) =
       error "Internal error in quickcheck-with-counterexamples: IORef written to twice"
-  res <- QC.quickCheckWithResult args $ idempotentIOProperty $ do
-    return $ unProperty (property prop) (modifyIORef ref . modify)
+  res <- QC.quickCheckWithResult args $
+    unProperty (property prop) (modifyIORef ref . modify)
   cex <- readIORef ref
   return (cex, res)
 
